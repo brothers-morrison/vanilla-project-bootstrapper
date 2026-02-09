@@ -15,6 +15,7 @@ This project provides a complete Python "Hello World" console application follow
 - ✅ **Comprehensive `.gitignore`** for Python projects
 
 ## Project Structure
+Also see: [https://medium.com/the-pythonworld/best-practices-for-structuring-a-python-project-like-a-pro-1265363836f9]
 
 ```
 .
