@@ -1,6 +1,12 @@
 # vanilla-project-bootstrapper
 
+Idea:
 Help quickly set up Python projects with minimal (but decent) gitignore and set up project layout for success.
+I shouldn't need to re-invent the wheel every time, lets build on the backs of giants.
+At a high level for a greenfield project, we plan to: 
+  1. Clone these files in
+  2. Remove all git folders (clearing the git history and ties to this project),
+  3. re-Attach it to our new project.
 
 ## Features
 
