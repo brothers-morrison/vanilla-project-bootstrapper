@@ -16,7 +16,7 @@ echo "Python Hello World Project Setup"
 echo "========================================"
 echo ""
 
-# Python LTS version (as of 2024, Python 3.12 is the latest LTS)
+# Python LTS version (Python 3.12 is the target LTS version)
 PYTHON_LTS_VERSION="3.12"
 
 # Function to check if command exists
