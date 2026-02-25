@@ -1,0 +1,76 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "juggle loop hook-event post-tool"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "juggle loop hook-event tool-failure"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "juggle loop hook-event session-end"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "juggle loop hook-event stop"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(juggle:*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(ls*)",
+      "Bash(grep*)",
+      "Bash(find*)",
+      "Bash(python*)",
+      "Bash(python3*)",
+      "Bash(pytest*)",
+      "Bash(ruff*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)"
+    ],
+    "ask": [
+      "Bash(juggle agent:*)",
+      "Bash(jj git push:*)",
+      "Bash(git push:*)"
+    ]
+  },
+  "sandbox": {
+    "allowUnsandboxedCommands": true,
+    "autoAllowBashIfSandboxed": true,
+    "enabled": true
+  }
+}

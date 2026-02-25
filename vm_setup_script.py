@@ -18,6 +18,8 @@ import os
 from typing import Optional, Union, List
 from pathlib import Path
 
+os.environ['PATH'] = os.environ.get('PATH', '') + ':' + str(Path.home() / '.local' / 'bin')
+
 
 
 """
@@ -302,6 +304,141 @@ class VMSetup:
             print(f"Warning: git push failed: {e}")
             print("You may need to authenticate or set up the remote properly")
     
+    def setup_opencode(self):
+        """Install OpenCode AI coding agent."""
+        self.h1("Installing OpenCode")
+        
+        print("Installing OpenCode AI coding agent...")
+        self.runner.run(
+            'curl -fsSL https://opencode.ai/install | bash',
+            shell=True
+        )
+        
+        print("✓ OpenCode installation complete")
+        print("\nNext: Run 'opencode' to start, then use /connect to authenticate")
+    
+    def setup_juggle(self):
+        """Install Juggle CLI for Ralph Loops."""
+        self.h1("Installing Juggle")
+        
+        print("Installing Juggle CLI...")
+        self.runner.run(
+            'curl -sSL https://raw.githubusercontent.com/ohare93/juggle/main/install.sh | bash',
+            shell=True
+        )
+        
+        juggle_dir = Path.home() / '.juggle'
+        juggle_dir.mkdir(exist_ok=True)
+        
+        config_source = Path(__file__).parent / 'juggle.conf'
+        config_dest = juggle_dir / 'config.json'
+        
+        if config_source.exists():
+            import shutil
+            shutil.copy(config_source, config_dest)
+            print(f"✓ Copied juggle.conf to {config_dest}")
+        
+        print("✓ Juggle installation complete")
+        print("\nRun 'juggle init' to configure, then 'juggle sessions create <name>' to start")
+
+    def configure_juggle(self):
+        """Configure and start Juggle daemon with OpenCode provider."""
+        self.h1("Configuring Juggle")
+        
+        juggle_bin = str(Path.home() / '.local' / 'bin' / 'juggle')
+        
+        if not Path(juggle_bin).exists():
+            print("Juggle not installed. Running setup_juggle first...")
+            self.setup_juggle()
+        
+        juggle_env = os.environ.copy()
+        juggle_env['PATH'] = str(Path.home() / '.local' / 'bin') + ':' + juggle_env.get('PATH', '')
+        
+        print("Initializing juggle project...")
+        self.runner.run(
+            [juggle_bin, 'init'],
+            cwd=str(Path.cwd()),
+            env=juggle_env,
+            check=False
+        )
+        
+        print("Setting opencode as default provider...")
+        self.runner.run(
+            [juggle_bin, 'config', 'provider', 'set', 'opencode'],
+            cwd=str(Path.cwd()),
+            env=juggle_env,
+            check=False
+        )
+        
+        print("Creating session 'ralph-loop'...")
+        self.runner.run(
+            [juggle_bin, 'sessions', 'create', 'ralph-loop'],
+            cwd=str(Path.cwd()),
+            env=juggle_env,
+            check=False
+        )
+        
+        print("Creating initial ball...")
+        self.runner.run(
+            [juggle_bin, 'start', 'Initial Ralph Loop setup', '-s', 'ralph-loop'],
+            cwd=str(Path.cwd()),
+            env=juggle_env,
+            check=False
+        )
+        
+        print("Starting juggle daemon with opencode agent...")
+        self.runner.run(
+            [juggle_bin, 'agent', 'run', 'ralph-loop', '--daemon', '--provider', 'opencode'],
+            cwd=str(Path.cwd()),
+            env=juggle_env,
+            check=False
+        )
+        
+        print("✓ Juggle daemon started successfully")
+        print("\nUse 'juggle agent run --monitor ralph-loop' to monitor progress")
+
+    def setup_uv_pip(self):
+        """Install uv and pip dependencies."""
+        self.h1("Setting uv / up Pip Dependencies")
+        
+        print("Installing uv package manager...")
+        self.runner.run(
+            'curl -LsSf https://astral.sh/uv/install.sh | sh',
+            shell=True
+        )
+        
+        print("✓ uv installation complete")
+    
+    def start_ralph_loop(self, session_name: str = "default"):
+        """Start a Ralph Loop using Juggle with OpenCode as the agent.
+        
+        Args:
+            session_name: Name of the juggle session to use
+        """
+        self.h1("Starting Ralph Loop")
+        
+        print(f"Importing spec to juggle session '{session_name}'...")
+        spec_path = Path("spec.md")
+        
+        if spec_path.exists():
+            self.runner.run(
+                ['juggle', 'import', 'spec', str(spec_path)],
+                cwd=str(Path.cwd()),
+                check=False
+            )
+        else:
+            print(f"Warning: spec.md not found at {spec_path}")
+        
+        print(f"Starting juggle daemon with opencode agent...")
+        self.runner.run(
+            ['juggle', '--daemon', 'agent', 'run', session_name],
+            cwd=str(Path.cwd()),
+            check=False
+        )
+        
+        print("✓ Ralph Loop started")
+        print("\nUse 'juggle' to view the TUI and monitor progress")
+    
     def run_full_setup(self):
         """Execute the complete setup process."""
         print("\n" + "="*70)
@@ -309,25 +446,16 @@ class VMSetup:
         print("="*70)
         
         try:
-            self.setup_ssh_keys()
-            self.setup_github_cli() # Requires gh to be installed
-            self.clone_and_configure_git()
-            self.setup_nodejs()
-            self.setup_api_key()
-            self.setup_playwright()
-            
-            
-            
-            # Extract repo name from URL
-            repo_name = self.github_repo.split('/')[-1].replace('.git', '')
-            self.sync_repository(repo_name)
+            self.setup_opencode()
+            self.configure_juggle()
+            self.setup_uv_pip()
             
             self.h1("Setup Complete!")
             print("Your VM is now configured for Ralph-Loop development.")
             print("\nNext steps:")
-            print("  1. Complete GitHub CLI authentication: gh auth login")
-            print("  2. Add your SSH key to GitHub (see above)")
-            print("  3. Navigate to your repository and start developing!")
+            print("  1. Run 'opencode' to start OpenCode, then /connect to authenticate")
+            print("  2. Run 'juggle init' to configure Juggle")
+            print("  3. Start developing!")
             
         except Exception as e:
             print(f"\n❌ Setup failed with error: {e}", file=sys.stderr)

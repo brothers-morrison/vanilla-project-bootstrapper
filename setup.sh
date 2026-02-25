@@ -18,6 +18,7 @@ echo ""
 
 # Python LTS version (Python 3.12 is the target LTS version)
 PYTHON_LTS_VERSION="3.12"
+PYTHON_BIN="python3"
 
 # Function to check if command exists
 command_exists() {
@@ -49,6 +50,8 @@ if ! command_exists python3; then
             if ! command_exists python3; then
                 sudo ln -sf /usr/bin/python${PYTHON_LTS_VERSION} /usr/bin/python3
             fi
+            # Ensure python3 points to the correct version
+            PYTHON_BIN="/usr/bin/python${PYTHON_LTS_VERSION}"
         elif command_exists yum; then
             # RHEL/CentOS/Fedora
             sudo yum install -y python${PYTHON_LTS_VERSION} python${PYTHON_LTS_VERSION}-devel
@@ -80,18 +83,18 @@ fi
 # Check if venv module is available
 echo ""
 echo "Checking for venv module..."
-if ! python3 -m venv --help >/dev/null 2>&1; then
+if ! $PYTHON_BIN -m venv --help >/dev/null 2>&1; then
     echo -e "${RED}venv module is not available.${NC}"
     echo -e "${YELLOW}Attempting to install python3-venv...${NC}"
     
     if command_exists apt-get; then
-        sudo apt-get install -y python3-venv
+        sudo apt-get install -y python${PYTHON_LTS_VERSION}-venv
     elif command_exists yum; then
-        sudo yum install -y python3-venv
+        sudo yum install -y python${PYTHON_LTS_VERSION}-venv
     elif command_exists dnf; then
-        sudo dnf install -y python3-venv
+        sudo dnf install -y python${PYTHON_LTS_VERSION}-venv
     else
-        echo -e "${RED}Please install python3-venv manually.${NC}"
+        echo -e "${RED}Please install python${PYTHON_LTS_VERSION}-venv manually.${NC}"
         exit 1
     fi
 else
@@ -105,7 +108,7 @@ if [ -d "$VENV_DIR" ]; then
     echo -e "${YELLOW}Virtual environment already exists at ${VENV_DIR}${NC}"
 else
     echo "Creating virtual environment at ${VENV_DIR}..."
-    python3 -m venv "$VENV_DIR"
+    $PYTHON_BIN -m venv "$VENV_DIR"
     echo -e "${GREEN}Virtual environment created successfully.${NC}"
 fi
 
