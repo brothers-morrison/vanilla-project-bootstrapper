@@ -43,19 +43,27 @@
       }
     ]
   },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true
+  },
   "permissions": {
     "allow": [
       "Bash(juggle:*)",
-      "Bash(git status*)",
-      "Bash(git diff*)",
-      "Bash(git log*)",
-      "Bash(ls*)",
-      "Bash(grep*)",
-      "Bash(find*)",
-      "Bash(python*)",
-      "Bash(python3*)",
-      "Bash(pytest*)",
-      "Bash(ruff*)"
+      "Bash(juggle agent:*)",
+      "Bash(git:*)",
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(pytest:*)",
+      "Bash(ruff:*)",
+      "Bash(pip:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(pypi.org:*)",
+      "Bash(files.pythonhosted.org:*)"
     ],
     "deny": [
       "Read(./.env)",
@@ -64,13 +72,7 @@
     ],
     "ask": [
       "Bash(juggle agent:*)",
-      "Bash(jj git push:*)",
       "Bash(git push:*)"
     ]
-  },
-  "sandbox": {
-    "allowUnsandboxedCommands": true,
-    "autoAllowBashIfSandboxed": true,
-    "enabled": true
   }
 }
