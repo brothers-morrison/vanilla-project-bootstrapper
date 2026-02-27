@@ -2,15 +2,16 @@
 
 Idea:
 Help quickly set up Python projects with minimal (but decent) gitignore and set up project layout for success.
-I shouldn't need to re-invent the wheel every time, lets build on the backs of giants.
+I shouldn't need to re-invent the wheel every time, remember to add /.venv/ and /pycache/ to .gitignore EVERY TIME, lets just build on the backs of giants.
 At a high level for a greenfield project, we plan to: 
-  1. Clone these files in
+  1. Clone in the repo files
   2. Remove all git folders (clearing the git history and ties to this project),
-  3. re-Attach it to our new project.
+  3. run the setup scripts (and make it as automated as humanly possible)
 
 ## Features
+** Main feature are the /setup.sh and /vm_setup_script.py which take a vanilla ubuntu linux machine, and set up everything on them that needs to be configured for a fully working opencode/claude code autonomous ai agent.
+** this project ALSO provides a complete Python "Hello World" console application,
 
-This project provides a complete Python "Hello World" console application following best practices:
 
 - ✅ **Modular package structure** using `src/` layout
 - ✅ **Runnable as module** with `__main__.py`
