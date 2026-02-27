@@ -25,6 +25,16 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
+markers = [
+    "apk: Alpine Linux specific tests",
+    "apt: Debian/Ubuntu specific tests",
+    "disk: Disk space tests",
+    "memory: Memory/swap tests",
+    "firewall: Firewall tests",
+    "ssh: SSH hardening tests",
+    "network: Network security tests",
+    "security: General security tests",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
