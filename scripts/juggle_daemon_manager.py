@@ -31,6 +31,8 @@ PROJECT_DIRS = [
     HOME / "Development",
     HOME / "vanilla-project-bootstrapper",
 ]
+DEFAULT_MODEL = "opencode/big-pickle"
+DEFAULT_PROVIDER = "opencode"
 
 
 def run_command(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess:
@@ -85,6 +87,24 @@ def agent_never_started(session_dir: Path) -> bool:
     return not state_file.exists()
 
 
+def session_has_pending_balls(juggle_dir: Path) -> bool:
+    balls_jsonl = juggle_dir / "balls.jsonl"
+    if not balls_jsonl.exists():
+        return False
+
+    try:
+        for line in balls_jsonl.read_text().strip().split("\n"):
+            if line:
+                ball = json.loads(line)
+                state = ball.get("state")
+                if state in ("pending", "in_progress"):
+                    return True
+    except (json.JSONDecodeError, OSError):
+        pass
+
+    return False
+
+
 def get_unmarked_completed_balls(juggle_dir: Path) -> list[dict]:
     balls_file = juggle_dir / "balls.jsonl"
     if not balls_file.exists():
@@ -111,7 +131,9 @@ def get_unmarked_completed_balls(juggle_dir: Path) -> list[dict]:
                         lock_info = json.loads(lock_file.read_text())
                         started_at = lock_info.get("started_at")
                         if started_at:
-                            started_ts = datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+                            started_ts = datetime.fromisoformat(
+                                started_at.replace("Z", "+00:00")
+                            )
                             now = datetime.now(started_ts.tzinfo)
                             diff_hours = (now - started_ts).total_seconds() / 3600
                             if diff_hours > 1:
@@ -138,10 +160,24 @@ def kill_hung_agent(session_name: str) -> None:
 
 def start_agent(session_name: str, project_dir: Path) -> None:
     log.info(f"Starting agent for session: {session_name} in {project_dir}")
-    run_command(
-        [str(JUGGLE_BIN), "agent", "run", session_name, "--daemon", "--provider", "opencode"],
+    result = run_command(
+        [
+            str(JUGGLE_BIN),
+            "agent",
+            "run",
+            session_name,
+            "--daemon",
+            "--provider",
+            DEFAULT_PROVIDER,
+            "--model",
+            DEFAULT_MODEL,
+        ],
         cwd=project_dir,
     )
+    if result.returncode != 0:
+        log.error(f"Failed to start agent for {session_name}: {result.stderr}")
+    else:
+        log.info(f"Agent started successfully for {session_name}: {result.stdout}")
 
 
 def count_active_agents() -> int:
@@ -186,6 +222,14 @@ def main() -> None:
                 break
 
             if not project_dir.exists():
+                continue
+
+            juggle_dir = project_dir / ".juggle"
+            if not juggle_dir.exists():
+                continue
+
+            if not session_has_pending_balls(juggle_dir):
+                log.info(f"No pending balls in {project_dir}, skipping agent start")
                 continue
 
             for session_dir in get_session_dirs(project_dir):
