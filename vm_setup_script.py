@@ -305,39 +305,35 @@ class VMSetup:
             "# taken from https://gist.github.com/Manoj-Paramsetti/dc957bdd6a4430275d0fc28a0dc43ae9#official-sources"
         )
 
-        print("WTF Github, why is this so complicated... ?")
-        print(
-            "https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian-ubuntu-linux-raspberry-pi-os-apt\n\n"
-        )
-        github_repo_setup_contents = """
-        # https://github.com/cli/cli/blob/trunk/docs/install_linux.md#debian-ubuntu-linux-raspberry-pi-os-apt
-(type -p wget >/dev/null || (sudo apt update && sudo apt install wget -y)) \
-	&& sudo mkdir -p -m 755 /etc/apt/keyrings \
-	&& out=$(mktemp) && wget -nv -O$out https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-	&& cat $out | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
-	&& sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
-	&& sudo mkdir -p -m 755 /etc/apt/sources.list.d \
-	&& echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-	&& sudo apt update \
-	&& sudo apt install gh -y
-        """
-        github_repo_setup = Path.home() / "github_repo.sh"
-        # Write out the github commands above, too painful to try to convert to python calls...
-        with open(github_repo_setup, "w") as f:
-            f.write(github_repo_setup_contents)
-
-        os.system(f"sudo chmod +x {str(github_repo_setup)}")
-        os.system(f"exec {str(github_repo_setup)}")
-
         print("Installing GitHub CLI...")
-        os.system(f"sudo apt install -y gh")
+        self.runner.run(
+            "sudo mkdir -p -m 755 /etc/apt/keyrings && "
+            "wget -nv -O /tmp/githubcli-archive-keyring.gpg "
+            "https://cli.github.com/packages/githubcli-archive-keyring.gpg && "
+            "sudo cp /tmp/githubcli-archive-keyring.gpg /etc/apt/keyrings/githubcli-archive-keyring.gpg && "
+            "sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg && "
+            "sudo mkdir -p -m 755 /etc/apt/sources.list.d && "
+            "echo 'deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] "
+            "https://cli.github.com/packages stable main' | "
+            "sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null && "
+            "sudo apt update && sudo apt install gh -y",
+            shell=True,
+        )
 
-        self.h1("  MANUAL STEP REQUIRED: GitHub CLI Authentication")
-        print("\nPlease run the following command manually and follow the prompts:")
-        self.color("  gh auth login")
-        print("\nThis will authenticate you with GitHub interactively.")
-        print("TODO: Explore automation options for this step\n")
-        os.system("gh auth login")
+        print("Configuring GitHub CLI authentication...")
+        if self.api_key:
+            os.environ["GH_TOKEN"] = self.api_key
+            self.runner.run(
+                "echo $GH_TOKEN | gh auth login --with-token",
+                shell=True,
+            )
+            print("GitHub CLI authenticated successfully!")
+        else:
+            self.h1("  MANUAL STEP REQUIRED: GitHub CLI Authentication")
+            print("\nNo API key provided. Please run the following command manually:")
+            self.color("  gh auth login")
+            print("\nThis will authenticate you with GitHub interactively.")
+            self.runner.run(["gh", "auth", "login"], capture=False)
 
     def setup_ssh_keys(self):
         """Generate SSH keys for GitHub."""

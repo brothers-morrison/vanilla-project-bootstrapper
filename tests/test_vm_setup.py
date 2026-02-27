@@ -329,10 +329,32 @@ class TestVMSetupGitOperations:
         repo_dir = tmp_path / "test-repo"
         repo_dir.mkdir()
 
-        vm_setup.sync_repository("test-repo")
+        with patch("vm_setup_script.Path") as mock_path:
+            mock_path.return_value.exists.return_value = True
+            mock_path.return_value.__str__ = lambda self: str(repo_dir)
+            vm_setup.sync_repository("test-repo")
 
         captured = capsys.readouterr()
         assert "Warning: git push failed" in captured.out
+
+    @patch("vm_setup_script.CommandRunner.run")
+    def test_sync_repository_push_success(self, mock_run, vm_setup, tmp_path, capsys):
+        """Test successful git push to remote."""
+        mock_run.return_value = Mock(returncode=0)
+        repo_dir = tmp_path / "test-repo"
+        repo_dir.mkdir()
+
+        with patch("vm_setup_script.Path") as mock_path:
+            mock_path.return_value.exists.return_value = True
+            mock_path.return_value.__str__ = lambda self: str(repo_dir)
+            vm_setup.sync_repository("test-repo")
+
+        captured = capsys.readouterr()
+        assert "Pushing to remote" in captured.out
+        mock_run.assert_any_call(
+            ["git", "push", "--set-upstream", "origin", "main"],
+            cwd=str(repo_dir),
+        )
 
 
 class TestVMSetupNodeJS:
@@ -453,23 +475,43 @@ class TestVMSetupGitHubCLI:
         return VMSetup(
             github_repo="https://github.com/test/repo.git",
             email="test@example.com",
-            api_key="secret-key",
+            api_key="test-token",
         )
 
-    @patch("vm_setup_script.os.system")
-    @patch("vm_setup_script.Path.home")
-    @patch("builtins.open", new_callable=mock_open)
-    def test_setup_github_cli(
-        self, mock_file, mock_home, mock_system, vm_setup, tmp_path
-    ):
-        """Test GitHub CLI setup creates script."""
-        mock_home.return_value = tmp_path
-        mock_system.return_value = 0
+    @patch("vm_setup_script.CommandRunner.run")
+    def test_setup_github_cli_with_token(self, mock_run, vm_setup, capsys):
+        """Test GitHub CLI setup with token for non-interactive auth."""
+        mock_run.return_value = Mock(returncode=0)
 
         vm_setup.setup_github_cli()
 
-        handle = mock_file()
-        handle.write.assert_called()
+        captured = capsys.readouterr()
+        assert "Installing GitHub CLI" in captured.out
+        assert "authenticated successfully" in captured.out
+
+        gh_token_calls = [
+            call
+            for call in mock_run.call_args_list
+            if "GH_TOKEN" in str(call) or "auth login" in str(call)
+        ]
+        assert len(gh_token_calls) > 0, "Expected gh auth login command to be called"
+
+    @patch("vm_setup_script.CommandRunner.run")
+    def test_setup_github_cli_uses_api_key_for_auth(self, mock_run, vm_setup, capsys):
+        """Test that GH_TOKEN is set from self.api_key for authentication."""
+        mock_run.return_value = Mock(returncode=0)
+        vm_setup.api_key = "my-custom-token"
+
+        vm_setup.setup_github_cli()
+
+        auth_call_found = False
+        for call in mock_run.call_args_list:
+            call_str = str(call)
+            if "echo" in call_str and "GH_TOKEN" in call_str:
+                auth_call_found = True
+                break
+
+        assert auth_call_found, "Expected GH_TOKEN to be used in auth command"
 
 
 class TestVMSetupSSHKeys:
