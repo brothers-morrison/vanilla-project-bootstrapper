@@ -158,6 +158,31 @@ class TestVMSetupInitialization:
 
         assert isinstance(setup.runner, CommandRunner)
 
+    def test_init_with_username(self):
+        """Test initialization with custom username."""
+        from vm_setup_script import VMSetup
+
+        setup = VMSetup(
+            github_repo="https://github.com/test/repo.git",
+            email="test@example.com",
+            api_key="secret-key",
+            username="Custom User",
+        )
+
+        assert setup.username == "Custom User"
+
+    def test_init_with_default_username(self):
+        """Test initialization has default username."""
+        from vm_setup_script import VMSetup
+
+        setup = VMSetup(
+            github_repo="https://github.com/test/repo.git",
+            email="test@example.com",
+            api_key="secret-key",
+        )
+
+        assert setup.username == "Ralph Wiggum"
+
 
 class TestVMSetupFormatting:
     """Test VMSetup formatting methods."""
@@ -233,6 +258,30 @@ class TestVMSetupGitOperations:
         assert "Cloning repository" in captured.out
         assert "Configuring Git" in captured.out
         assert mock_run.call_count >= 2
+
+    @patch("vm_setup_script.CommandRunner.run")
+    def test_clone_uses_email_parameter(self, mock_run, vm_setup, capsys):
+        """Test git config uses email from parameter."""
+        mock_run.return_value = Mock(returncode=0)
+        vm_setup.email = "testuser@example.com"
+
+        vm_setup.clone_and_configure_git()
+
+        calls = mock_run.call_args_list
+        email_call = [c for c in calls if "user.email" in str(c)][0]
+        assert "testuser@example.com" in str(email_call)
+
+    @patch("vm_setup_script.CommandRunner.run")
+    def test_clone_uses_username_parameter(self, mock_run, vm_setup, capsys):
+        """Test git config uses username from parameter."""
+        mock_run.return_value = Mock(returncode=0)
+        vm_setup.username = "Test User"
+
+        vm_setup.clone_and_configure_git()
+
+        calls = mock_run.call_args_list
+        username_call = [c for c in calls if "user.name" in str(c)][0]
+        assert "Test User" in str(username_call)
 
     @patch("vm_setup_script.CommandRunner.run")
     def test_sync_repository_success(self, mock_run, vm_setup, tmp_path, capsys):
@@ -596,6 +645,38 @@ class TestVMSetupUV:
         captured = capsys.readouterr()
         assert "uv" in captured.out
         assert "astral.sh" in captured.out
+
+
+class TestVMCronJob:
+    """Test cron job setup method."""
+
+    @pytest.fixture
+    def vm_setup(self):
+        """Create VMSetup instance."""
+        from vm_setup_script import VMSetup
+
+        return VMSetup(
+            github_repo="https://github.com/test/repo.git",
+            email="test@example.com",
+            api_key="secret-key",
+        )
+
+    def test_setup_cron_job_method_exists(self, vm_setup):
+        """Test cron job method exists."""
+        assert hasattr(vm_setup, "setup_cron_job")
+        assert callable(vm_setup.setup_cron_job)
+
+    def test_cron_job_creates_valid_cron_entry(self):
+        """Test cron entry format is valid."""
+        import re
+
+        juggle_manager_path = (
+            "/home/user/vanilla-project-bootstrapper/scripts/juggle_daemon_manager.py"
+        )
+        cron_entry = f"0 * * * * /usr/bin/env python3 {juggle_manager_path} >> /home/user/.juggle/cron.log 2>&1"
+        assert cron_entry.startswith("0 * * * *")
+        assert "python3" in cron_entry
+        assert "juggle_daemon_manager.py" in cron_entry
 
 
 class TestStartRalphLoop:

@@ -200,11 +200,17 @@ class VMSetup:
     """Main setup class for configuring VM for Ralph-Loop."""
 
     def __init__(
-        self, github_repo: str, email: str, api_key: str, project_repo: str = ""
+        self,
+        github_repo: str,
+        email: str,
+        api_key: str,
+        project_repo: str = "",
+        username: str = "Ralph Wiggum",
     ):
         self.github_repo = github_repo
         self.project_repo = project_repo
         self.email = email
+        self.username = username
         self.api_key = api_key
         self.runner = CommandRunner()
 
@@ -240,7 +246,7 @@ class VMSetup:
         # Configure Git globally
         print("\nConfiguring Git user settings...")
         self.runner.run(["git", "config", "--global", "user.email", self.email])
-        self.runner.run(["git", "config", "--global", "user.name", "Ralph Wiggum"])
+        self.runner.run(["git", "config", "--global", "user.name", self.username])
 
         print("✓ Git configuration complete")
 
@@ -598,6 +604,50 @@ class VMSetup:
         print("✓ Ralph Loop started")
         print("\nUse 'juggle' to view the TUI and monitor progress")
 
+    def setup_cron_job(self):
+        """Set up a cron job to run juggle_daemon_manager every hour."""
+        self.h1("Setting Up Cron Job")
+
+        juggle_manager_path = (
+            Path(__file__).parent / "scripts" / "juggle_daemon_manager.py"
+        )
+
+        if not juggle_manager_path.exists():
+            print(f"Juggle manager not found at {juggle_manager_path}")
+            juggle_manager_path = (
+                Path.home()
+                / "vanilla-project-bootstrapper"
+                / "scripts"
+                / "juggle_daemon_manager.py"
+            )
+
+        if not juggle_manager_path.exists():
+            print(
+                f"{bcolors.FAIL}Error: juggle_daemon_manager.py not found{bcolors.ENDC}"
+            )
+            return
+
+        cron_entry = f"0 * * * * /usr/bin/env python3 {juggle_manager_path} >> {Path.home() / '.juggle' / 'cron.log'} 2>&1"
+
+        existing_cron = self.runner.run(["crontab", "-l"], capture=True, check=False)
+
+        if (
+            existing_cron.returncode == 0
+            and juggle_manager_path.name in existing_cron.stdout
+        ):
+            print("Cron job already exists, skipping installation")
+        else:
+            new_cron = existing_cron.stdout + "\n" + cron_entry + "\n"
+            self.runner.run(
+                f"echo '{cron_entry}' | crontab -",
+                shell=True,
+                capture=False,
+            )
+            print(f"{bcolors.OKGREEN}Cron job installed:{bcolors.ENDC}")
+            print(f"  {cron_entry}")
+
+        print("✓ Cron job configured to run juggle_manager every hour")
+
     def run_full_setup(self, max_duration: int = 300):
         """Execute the complete setup process.
 
@@ -675,6 +725,7 @@ def main():
     EMAIL = os.getenv(
         "GIT_EMAIL", "{{your-masked-github-email-here@users.noreply.github.com}}"
     )
+    USERNAME = os.getenv("GIT_USERNAME", "Ralph Wiggum")
     API_KEY = os.getenv(
         "OPENROUTER_API_KEY", "{{inject-your-key-here-do-not-hardcode}}"
     )
@@ -696,7 +747,11 @@ def main():
 
     # Run setup
     setup = VMSetup(
-        github_repo=GITHUB_REPO, email=EMAIL, api_key=API_KEY, project_repo=PROJECT_REPO
+        github_repo=GITHUB_REPO,
+        email=EMAIL,
+        api_key=API_KEY,
+        project_repo=PROJECT_REPO,
+        username=USERNAME,
     )
 
     setup.run_full_setup()

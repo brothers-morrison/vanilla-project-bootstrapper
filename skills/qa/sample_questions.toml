@@ -1,0 +1,27 @@
+title = "Sample Survey"
+description = "Please answer these sample questions"
+
+[[questions]]
+id = "q1"
+question = "What is your name?"
+type = "text"
+required = true
+
+[[questions]]
+id = "q2"
+question = "How satisfied are you?"
+type = "choice"
+options = ["Very satisfied", "Satisfied", "Neutral", "Dissatisfied"]
+required = true
+
+[[questions]]
+id = "q3"
+question = "Do you recommend us?"
+type = "yes_no"
+required = true
+
+[[questions]]
+id = "q4"
+question = "On a scale of 1-10, how likely are you to recommend us?"
+type = "number"
+required = false
